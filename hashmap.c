@@ -40,6 +40,8 @@ struct hashmap {
     bool oom;
     size_t elsize;
     size_t cap;
+    size_t map_malloc_size;
+    size_t buckets_malloc_size;
     uint64_t seed0;
     uint64_t seed1;
     uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1);
@@ -56,6 +58,23 @@ struct hashmap {
     void *spare;
     void *edata;
 };
+
+size_t get_hashmap_map_malloc_size(struct hashmap *map) {
+    return map->map_malloc_size;
+}
+
+size_t get_hashmap_bucket_malloc_size(struct hashmap *map) {
+    return map->buckets_malloc_size;
+}
+
+void set_hashmap_bucket(struct hashmap *map, void *ptr) {
+    map->buckets = ptr;
+}
+
+void *get_hashmap_bucket(struct hashmap *map) {
+    return map->buckets;
+}
+
 
 static struct bucket *bucket_at(struct hashmap *map, size_t index) {
     return (struct bucket*)(((char*)map->buckets)+(map->bucketsz*index));
@@ -107,6 +126,7 @@ struct hashmap *hashmap_new_with_allocator(
         return NULL;
     }
     memset(map, 0, sizeof(struct hashmap));
+    map->map_malloc_size = size;
     map->elsize = elsize;
     map->bucketsz = bucketsz;
     map->seed0 = seed0;
@@ -120,7 +140,8 @@ struct hashmap *hashmap_new_with_allocator(
     map->cap = cap;
     map->nbuckets = cap;
     map->mask = map->nbuckets-1;
-    map->buckets = _malloc(map->bucketsz*map->nbuckets);
+    map->buckets_malloc_size = map->bucketsz*map->nbuckets;
+    map->buckets = _malloc(map->buckets_malloc_size);
     if (!map->buckets) {
         _free(map);
         return NULL;
@@ -191,7 +212,8 @@ void hashmap_clear(struct hashmap *map, bool update_cap) {
     if (update_cap) {
         map->cap = map->nbuckets;
     } else if (map->nbuckets != map->cap) {
-        void *new_buckets = map->malloc(map->bucketsz*map->cap);
+        map->buckets_malloc_size = map->bucketsz*map->cap;
+        void *new_buckets = map->malloc(map->buckets_malloc_size);
         if (new_buckets) {
             map->free(map->buckets);
             map->buckets = new_buckets;
@@ -240,6 +262,7 @@ static bool resize(struct hashmap *map, size_t new_cap) {
     map->mask = map2->mask;
     map->growat = map2->growat;
     map->shrinkat = map2->shrinkat;
+    map->buckets_malloc_size = map2->buckets_malloc_size;
     map->free(map2);
     return true;
 }

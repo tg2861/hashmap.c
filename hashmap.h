@@ -31,6 +31,11 @@ struct hashmap *hashmap_new_with_allocator(
                                            void *udata),
                             void (*elfree)(void *item),
                             void *udata);
+size_t get_hashmap_map_malloc_size(struct hashmap *map);
+size_t get_hashmap_bucket_malloc_size(struct hashmap *map);
+void set_hashmap_bucket(struct hashmap *map, void *ptr);
+void *get_hashmap_bucket(struct hashmap *map);
+
 void hashmap_free(struct hashmap *map);
 void hashmap_clear(struct hashmap *map, bool update_cap);
 size_t hashmap_count(struct hashmap *map);
